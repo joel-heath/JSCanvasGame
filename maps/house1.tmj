@@ -249,9 +249,19 @@
                  "name":"",
                  "properties":[
                         {
-                         "name":"destination",
+                         "name":"destinationMap",
                          "type":"string",
-                         "value":"outside"
+                         "value":"outdoors1"
+                        }, 
+                        {
+                         "name":"destinationX",
+                         "type":"int",
+                         "value":23
+                        }, 
+                        {
+                         "name":"destinationY",
+                         "type":"int",
+                         "value":8
                         }, 
                         {
                          "name":"type",

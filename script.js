@@ -3,12 +3,13 @@ const ctx = canvas.getContext('2d');
 
 const player = {
     x: 77,
-    y: 45,
+    y: 42,
     xVel: 0,
     yVel: 0,
     acc: 1,
     terminalVel: 1,
     facing: 'left',
+    location: 'house1' // The player's current map location
 };
 
 const keysPressed = {
@@ -21,17 +22,21 @@ const keysPressed = {
 
 // Global object to hold map data and assets
 const game = {
-    map: null,
-    tileImages: {}, // Maps a GID to its loaded image
+    maps: {}, // Will be keyed by map name, e.g., 'house1'
+    tileImages: {}, // Maps a GID to its loaded image (global cache)
     characters: {},
+};
+/* Each map object in game.maps[mapName] will have this structure:
+{
+    mapData: The raw Tiled JSON data,
     currentInteractable: null,
     backgroundLayer: null,
     collisionLayer: null,
     interactablesLayer: null,
-    // Holds foreground objects, sorted by Y-position for depth sorting
     sortedForegroundObjects: [],
-    topLayerObjects: [], // For objects that should always be drawn on top
-};
+    topLayerObjects: [],
+}
+*/
 
 // --- ASSET LOADING ---
 
@@ -50,14 +55,11 @@ function loadImage(src) {
 }
 
 /**
- * Loads the Tiled map and all associated assets by parsing the .tsx files.
+ * Loads all Tiled maps and associated assets.
+ * This function now processes multiple maps and organizes them.
  */
 async function loadAssets() {
-    // 1. Fetch Tiled map JSON
-    const mapResponse = await fetch('maps/house1.tmj');
-    game.map = await mapResponse.json();
-
-    // 2. Load player assets
+    // 1. Load Player Assets (these are global)
     const playerImagesToLoad = {
         'duck_r': loadImage('characters/duck_r.png'),
         'duck_l': loadImage('characters/duck_l.png'),
@@ -70,6 +72,7 @@ async function loadAssets() {
     player.image = game.characters.duck_l;
     player.width = player.image.width;
     player.height = player.image.height;
+
     const playerCollisionImg = await loadImage('collision/duck.png');
     const offscreenCanvas = document.createElement('canvas');
     offscreenCanvas.width = playerCollisionImg.width;
@@ -78,118 +81,148 @@ async function loadAssets() {
     offscreenCtx.drawImage(playerCollisionImg, 0, 0);
     player.collisionMap = offscreenCtx.getImageData(0, 0, player.width, player.height);
 
-    // 3. Find important layers
-    game.map.layers.forEach(layer => {
-        if (layer.name === "Collision") game.collisionLayer = layer;
-        if (layer.name === "Interactables") game.interactablesLayer = layer;
-        if (layer.type === "imagelayer" && layer.name === "Background") game.backgroundLayer = layer;
-        if (layer.name === "Top") game.topLayerObjects = layer.objects;
+    // 2. Load All Map Data
+    const mapFiles = ['house1.tmj', 'outdoors1.tmj'];
+    const mapResponses = await Promise.all(mapFiles.map(map => fetch(`maps/${map}`)));
+    const mapJsonData = await Promise.all(mapResponses.map(res => res.json()));
+
+    // Create map objects keyed by name (e.g., 'house1')
+    mapFiles.forEach((fileName, index) => {
+        const mapName = fileName.replace('.tmj', '');
+        game.maps[mapName] = {
+            mapData: mapJsonData[index],
+            currentInteractable: null,
+            backgroundLayer: null,
+            collisionLayer: null,
+            interactablesLayer: null,
+            sortedForegroundObjects: [],
+            topLayerObjects: [],
+        };
     });
 
-    // 4. Load background image and all individual tiles from the .tsx files
-    const bgPath = 'backgrounds/' + game.backgroundLayer.image;
-    const imageLoadPromises = [loadImage(bgPath)];
+    // 3. Process All Maps to Find Layers and Load Assets
+    const allAssetLoadPromises = [];
     const domParser = new DOMParser();
-    
-    for (const ts of game.map.tilesets) {
-        const tsxPath = 'tilesets/' + ts.source;
-        const response = await fetch(tsxPath);
-        if (!response.ok) throw new Error(`Failed to fetch tileset: ${tsxPath}`);
-        
-        const tsxText = await response.text();
-        const tsxDoc = domParser.parseFromString(tsxText, 'application/xml');
-        const tileNodes = tsxDoc.querySelectorAll('tile');
 
-        for (const tileNode of tileNodes) {
-            const localId = parseInt(tileNode.getAttribute('id'), 10);
-            const imageNode = tileNode.querySelector('image');
-            if (!imageNode) continue;
-            
-            const imagePath = 'tilesets/' + imageNode.getAttribute('source'); 
-            const gid = ts.firstgid + localId;
+    for (const mapName in game.maps) {
+        const map = game.maps[mapName];
+        const mapData = map.mapData;
 
-            const promise = loadImage(imagePath).then(img => {
-                game.tileImages[gid] = img;
+        // Find important layers for this specific map
+        mapData.layers.forEach(layer => {
+            if (layer.name === "Collision") map.collisionLayer = layer;
+            if (layer.name === "Interactables") map.interactablesLayer = layer;
+            if (layer.type === "imagelayer" && layer.name === "Background") map.backgroundLayer = layer;
+            if (layer.name === "Top") map.topLayerObjects = layer.objects;
+        });
+
+        // Queue background image for loading
+        if (map.backgroundLayer) {
+            const bgPath = 'backgrounds/' + map.backgroundLayer.image;
+            const bgPromise = loadImage(bgPath).then(img => {
+                map.backgroundLayer.image = img;
             });
-            imageLoadPromises.push(promise);
+            allAssetLoadPromises.push(bgPromise);
+        }
+
+        // Fetch and parse all tilesets for this map
+        for (const ts of mapData.tilesets) {
+            const tsxPath = 'tilesets/' + ts.source;
+            const response = await fetch(tsxPath);
+            if (!response.ok) throw new Error(`Failed to fetch tileset: ${tsxPath}`);
+
+            const tsxText = await response.text();
+            const tsxDoc = domParser.parseFromString(tsxText, 'application/xml');
+            const tileNodes = tsxDoc.querySelectorAll('tile');
+
+            // Queue individual tile images for loading
+            for (const tileNode of tileNodes) {
+                const localId = parseInt(tileNode.getAttribute('id'), 10);
+                const imageNode = tileNode.querySelector('image');
+                if (!imageNode) continue;
+
+                const imagePath = 'tilesets/' + imageNode.getAttribute('source');
+                const gid = ts.firstgid + localId;
+
+                // Only queue for loading if we haven't already loaded it
+                if (!game.tileImages[gid]) {
+                    const promise = loadImage(imagePath).then(img => {
+                        game.tileImages[gid] = img; // Add to global cache
+                    });
+                    allAssetLoadPromises.push(promise);
+                }
+            }
+        }
+        
+        // Prepare and sort foreground objects for this map
+        const foregroundLayer = mapData.layers.find(l => l.name === "Foreground");
+        if (foregroundLayer) {
+            map.sortedForegroundObjects = foregroundLayer.objects.sort((a, b) => a.y - b.y);
         }
     }
 
-    const [bgImage] = await Promise.all(imageLoadPromises);
-    game.backgroundLayer.image = bgImage;
-
-    // 5. Prepare foreground objects for depth sorting
-    prepareForeground();
-}
-
-/**
- * Gets all foreground objects and sorts them by their Y-position.
- * This is done once at load time for performance.
- */
-function prepareForeground() {
-    const foregroundLayer = game.map.layers.find(l => l.name === "Foreground");
-    if (!foregroundLayer) return;
-
-    // Sort objects by their bottom Y-coordinate (obj.y in Tiled)
-    game.sortedForegroundObjects = foregroundLayer.objects.sort((a, b) => a.y - b.y);
+    // 4. Wait for all images (backgrounds, tiles) to load before starting the game
+    await Promise.all(allAssetLoadPromises);
 }
 
 
 // --- COLLISION & INTERACTION ---
 
-const TILE_ID = {
-    EMPTY: 0,
-    WALL: 18,
-};
-
 /**
- * A smarter collision check that allows the player's upper body to pass under "overhangs".
- * This single function replaces the previous two and fixes the "getting stuck" bug.
+ * Checks for collision against the collision layer of the CURRENT map.
  * @param {number} playerX The player's target X coordinate.
  * @param {number} playerY The player's target Y coordinate.
- * @returns {boolean} True if a solid, non-ignorable collision occurs.
+ * @returns {boolean} True if a solid collision occurs.
  */
 function checkWallCollision(playerX, playerY) {
+    const currentMap = game.maps[player.location];
+    if (!currentMap || !currentMap.collisionLayer) return false;
+
     for (let y = 0; y < player.height; y++) {
         for (let x = 0; x < player.width; x++) {
-            // Skip transparent pixels on the player's own mask
             const playerPixelIndex = (y * player.width + x) * 4;
             if (player.collisionMap.data[playerPixelIndex + 3] === 0) {
                 continue;
             }
 
-            // Find the world coordinate of this player pixel
             const mapX = Math.round(playerX + x);
             const mapY = Math.round(playerY + y);
 
-            if (mapX < 0 || mapX >= game.collisionLayer.width || mapY < 0 || mapY >= game.collisionLayer.height) {
-                return true;
+            if (mapX < 0 || mapX >= currentMap.collisionLayer.width || mapY < 0 || mapY >= currentMap.collisionLayer.height) {
+                return true; // Collision with map boundaries
             }
 
-            const tileIndex = mapY * game.collisionLayer.width + mapX;
-            if (game.collisionLayer.data[tileIndex] === TILE_ID.WALL)
+            const tileIndex = mapY * currentMap.collisionLayer.width + mapX;
+            if (currentMap.collisionLayer.data[tileIndex] !== 0) {
                 return true;
+            }
         }
     }
-    return false; // No collision found
+    return false;
 }
 
 
 /**
- * Checks if the player is overlapping with any interactable objects.
+ * Checks for overlap with interactable objects on the CURRENT map.
  */
 function checkInteractables() {
     const p = player;
-    for (const obj of game.interactablesLayer.objects) {
+    const currentMap = game.maps[p.location];
+    if (!currentMap || !currentMap.interactablesLayer) {
+        if (currentMap) currentMap.currentInteractable = null;
+        return;
+    }
+
+    for (const obj of currentMap.interactablesLayer.objects) {
         if (p.x < obj.x + obj.width &&
             p.x + p.width > obj.x &&
             p.y < obj.y + obj.height &&
             p.y + p.height > obj.y) {
-            game.currentInteractable = obj;
+            currentMap.currentInteractable = obj;
             return;
         }
     }
-    game.currentInteractable = null;
+    currentMap.currentInteractable = null;
 }
 
 /**
@@ -205,24 +238,38 @@ function getProperty(obj, propName) {
 // --- GAME LOGIC & DRAWING ---
 
 function updatePlayerPosition() {
-    // 1. Check for interactions
+    const currentMap = game.maps[player.location];
+    if (!currentMap) return;
+
     checkInteractables();
 
-    // 2. Handle player input for interactions
-    if (keysPressed.space && game.currentInteractable) {
+    if (keysPressed.space && currentMap.currentInteractable) {
         keysPressed.space = 0;
-        const type = getProperty(game.currentInteractable, 'type');
+        const interactable = currentMap.currentInteractable;
+        const type = getProperty(interactable, 'type');
 
         if (type === 'door') {
-            const destination = getProperty(game.currentInteractable, 'destination');
-            console.log(`Player activated a door to: ${destination}`);
+            const destinationMap = getProperty(interactable, 'destinationMap');
+            const destinationX = getProperty(interactable, 'destinationX');
+            const destinationY = getProperty(interactable, 'destinationY');
+
+            // --- MAP SWITCH LOGIC ---
+            if (destinationMap && game.maps[destinationMap] && destinationX != null && destinationY != null) {
+                console.log(`Player activating door to ${destinationMap} at (${destinationX}, ${destinationY})`);
+                player.location = destinationMap;
+                player.x = destinationX;
+                player.y = destinationY;
+                player.xVel = 0; // Stop movement after teleporting
+                player.yVel = 0;
+                return; // Exit update loop to prevent physics bugs on the same frame
+            }
         } else if (type === 'move') {
-            player.x = getProperty(game.currentInteractable, 'destination_x');
-            player.y = getProperty(game.currentInteractable, 'destination_y');
+            player.x = getProperty(interactable, 'destination_x');
+            player.y = getProperty(interactable, 'destination_y');
         }
     }
 
-    // 3. Calculate vertical movement
+    // Vertical movement
     if (keysPressed.up && (keysPressed.down != 2))
         player.yVel = Math.max(player.yVel - player.acc, -player.terminalVel);
     else if (keysPressed.down && (keysPressed.up != 2))
@@ -235,7 +282,7 @@ function updatePlayerPosition() {
         player.y = newY;
     }
 
-    // 4. Calculate horizontal movement
+    // Horizontal movement
     if (keysPressed.left && (keysPressed.right != 2)) {
         player.xVel = Math.max(player.xVel - player.acc, -player.terminalVel);
         if (player.facing !== 'left') {
@@ -248,28 +295,31 @@ function updatePlayerPosition() {
             player.image = game.characters.duck_r;
             player.facing = 'right';
         }
-    } else
+    } else {
         player.xVel = 0;
+    }
     
     const newX = player.x + player.xVel;
-
     if (!checkWallCollision(newX, player.y)) {
         player.x = newX;
     }
 }
 
 /**
- * Draws the scene and handles Y-sorting for player and foreground objects.
+ * Draws the scene for the CURRENT map, handling Y-sorting.
  */
 function drawSceneAndEntities() {
-    if (game.backgroundLayer && game.backgroundLayer.image) {
-        ctx.drawImage(game.backgroundLayer.image, 0, 0);
+    const currentMap = game.maps[player.location];
+    if (!currentMap) return;
+
+    if (currentMap.backgroundLayer && currentMap.backgroundLayer.image) {
+        ctx.drawImage(currentMap.backgroundLayer.image, 0, 0);
     }
 
-    const playerBaseY = player.y + player.height - 1; // -1 for shadow
+    const playerBaseY = player.y + player.height - 1;
     let playerDrawn = false;
 
-    for (const obj of game.sortedForegroundObjects) {
+    for (const obj of currentMap.sortedForegroundObjects) {
         if (!playerDrawn && playerBaseY < obj.y) {
             ctx.drawImage(player.image, Math.round(player.x), Math.round(player.y), player.width, player.height);
             playerDrawn = true;
@@ -277,7 +327,7 @@ function drawSceneAndEntities() {
         
         const tileImage = game.tileImages[obj.gid];
         if (tileImage) {
-            const drawY = obj.y - obj.height; // Adjust for Tiled's coordinate system
+            const drawY = obj.y - obj.height;
             const width = tileImage.width || obj.width;
             const height = tileImage.height || obj.height;
             ctx.drawImage(tileImage, obj.x, drawY, width, height);
@@ -288,7 +338,7 @@ function drawSceneAndEntities() {
         ctx.drawImage(player.image, Math.round(player.x), Math.round(player.y), player.width, player.height);
     }
 
-    for (const obj of game.topLayerObjects) {
+    for (const obj of currentMap.topLayerObjects) {
         const tileImage = game.tileImages[obj.gid];
         if (tileImage) {
             const width = tileImage.width || obj.width;
@@ -345,9 +395,6 @@ startButton.addEventListener('click', async () => {
 
     try {
         await loadAssets();
-        player.x = 23;
-        player.y = 55;
-
         startButton.style.display = 'none';
         canvas.style.display = 'block';
         gameLoop();
