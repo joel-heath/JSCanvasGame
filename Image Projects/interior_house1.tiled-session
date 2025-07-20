@@ -28,11 +28,11 @@
             "expandedObjectLayers": [
                 8
             ],
-            "scale": 10.754,
+            "scale": 8,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 47.424214245862004,
-                "y": 31.988097452110843
+                "x": 80.5,
+                "y": 43.25
             }
         },
         "E:/OneDrive/Programming/Websites/Duck Game/maps/outdoors1.tmj": {
@@ -41,7 +41,7 @@
                 4
             ],
             "scale": 8,
-            "selectedLayer": 3,
+            "selectedLayer": 2,
             "viewCenter": {
                 "x": 58.75,
                 "y": 35.75

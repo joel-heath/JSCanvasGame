@@ -141,10 +141,10 @@
          "height":64,
          "id":5,
          "name":"Collision",
-         "opacity":1,
+         "opacity":0.35,
          "tintcolor":"#ff00ff",
          "type":"tilelayer",
-         "visible":true,
+         "visible":false,
          "width":192,
          "x":0,
          "y":0

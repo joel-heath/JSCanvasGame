@@ -176,10 +176,10 @@
          "height":64,
          "id":7,
          "name":"Collision",
-         "opacity":1,
+         "opacity":0.33,
          "tintcolor":"#ff00ff",
          "type":"tilelayer",
-         "visible":true,
+         "visible":false,
          "width":100,
          "x":0,
          "y":0
@@ -195,19 +195,24 @@
                  "name":"",
                  "properties":[
                         {
-                         "name":"destination_x",
+                         "name":"destinationX",
                          "type":"int",
                          "value":87
                         }, 
                         {
-                         "name":"destination_y",
+                         "name":"destinationY",
                          "type":"int",
                          "value":43
                         }, 
                         {
+                         "name":"reboundTime",
+                         "type":"int",
+                         "value":2000
+                        }, 
+                        {
                          "name":"type",
                          "type":"string",
-                         "value":"move"
+                         "value":"moveRebound"
                         }],
                  "rotation":0,
                  "type":"",
@@ -222,19 +227,24 @@
                  "name":"",
                  "properties":[
                         {
-                         "name":"destination_x",
+                         "name":"destinationX",
                          "type":"int",
                          "value":86
                         }, 
                         {
-                         "name":"destination_y",
+                         "name":"destinationY",
                          "type":"int",
                          "value":12
                         }, 
                         {
+                         "name":"reboundTime",
+                         "type":"int",
+                         "value":2000
+                        }, 
+                        {
                          "name":"type",
                          "type":"string",
-                         "value":"move"
+                         "value":"moveRebound"
                         }],
                  "rotation":0,
                  "type":"",
