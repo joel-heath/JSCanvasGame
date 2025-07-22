@@ -3,11 +3,11 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "E:/OneDrive/Programming/Websites/Duck Game/maps/outdoors1.tmj",
+    "activeFile": "E:/OneDrive/Programming/Websites/Duck Game/maps/house1.tmj",
     "expandedProjectPaths": [
-        ".",
         "E:/OneDrive/Programming/Websites/Duck Game/tilesets",
-        "E:/OneDrive/Programming/Websites/Duck Game/maps"
+        "E:/OneDrive/Programming/Websites/Duck Game/maps",
+        "."
     ],
     "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
@@ -28,11 +28,11 @@
             "expandedObjectLayers": [
                 8
             ],
-            "scale": 8,
+            "scale": 4,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 80.5,
-                "y": 43.25
+                "x": 24.25,
+                "y": 48.25
             }
         },
         "E:/OneDrive/Programming/Websites/Duck Game/maps/outdoors1.tmj": {
@@ -40,11 +40,11 @@
                 3,
                 4
             ],
-            "scale": 8,
-            "selectedLayer": 2,
+            "scale": 11,
+            "selectedLayer": 3,
             "viewCenter": {
-                "x": 58.75,
-                "y": 35.75
+                "x": 147.72727272727272,
+                "y": 11.90909090909091
             }
         },
         "E:/OneDrive/Programming/Websites/Duck Game/tilesets/Collision.tsx": {
@@ -95,8 +95,8 @@
     "project": "interior_house1.tiled-project",
     "property.type": "int",
     "recentFiles": [
-        "E:/OneDrive/Programming/Websites/Duck Game/maps/house1.tmj",
         "E:/OneDrive/Programming/Websites/Duck Game/maps/outdoors1.tmj",
+        "E:/OneDrive/Programming/Websites/Duck Game/maps/house1.tmj",
         "E:/OneDrive/Programming/Websites/Duck Game/tilesets/OutsideDecor.tsx",
         "House Interior Map.tmx",
         "Collision.tsx",

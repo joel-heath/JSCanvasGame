@@ -16,7 +16,9 @@ const player = {
     acc: 1,
     terminalVel: 1,
     facing: 'left',
-    location: ''
+    location: '',
+    aboveForeground: false, // used in moveRebound interactables
+    quacked: false, // sound shenanigans
 };
 
 const keysPressed = {
@@ -327,28 +329,42 @@ function updatePlayerPosition() {
             player.y = interactable.destinationY;
             player.xVel = 0;
             player.yVel = 0;
+            audioEngine.playSound(sfx.door);
+            audioEngine.playMusic(music[player.location], { fadeInTime: 0, fadeOutTime: 0.1 });
         } else if (type === 'move') {
             player.x = interactable.destinationX;
             player.y = interactable.destinationY;
         } else if (type === 'moveRebound') {
-            const oldX = player.x;
-            const oldY = player.y;
+            const { x: oldX, y: oldY, image: oldImage, facing: oldFacing } = player;
 
             player.x = interactable.destinationX;
             player.y = interactable.destinationY;
+            player.image = game.characters.duck_f;
+            player.facing = 'forward';
+            player.aboveForeground = true;
 
             setTimeout(() => {
                 player.x = oldX;
                 player.y = oldY;
                 player.xVel = 0;
                 player.yVel = 0;
+                if (player.facing === 'forward') {
+                    player.image = oldImage;
+                    player.facing = oldFacing;
+                }
+                player.aboveForeground = false;
             }, interactable.reboundTime);
         }
         else {
             console.warn(`Unknown interactable type: ${type}`);
         }
+
         updateCamera();
         return;
+    }
+    else if (keysPressed.space && !player.quacked) {
+        player.quacked = true;
+        audioEngine.playSound(sfx.quack, { timeout: 150 });
     }
 
     // Vertical movement
@@ -401,7 +417,7 @@ function drawSceneAndEntities() {
     let playerDrawn = false;
 
     for (const obj of currentMap.sortedForegroundObjects) {
-        if (!playerDrawn && playerBaseY < obj.y) {
+        if (!player.aboveForeground &&!playerDrawn && playerBaseY < obj.y) {
             const drawX = Math.round(player.x - camera.x);
             const drawY = Math.round(player.y - camera.y);
             ctx.drawImage(player.image, drawX, drawY, player.width, player.height);
@@ -443,6 +459,8 @@ function gameLoop() {
 // --- EVENT LISTENERS & GAME START ---
 
 document.addEventListener('keydown', (event) => {
+    if (event.repeat) return; 
+
     if (event.key === 'ArrowUp' || event.key === 'w') {
         if (keysPressed.down) keysPressed.down = 1;
         keysPressed.up = 2;
@@ -455,8 +473,10 @@ document.addEventListener('keydown', (event) => {
     } else if (event.key === 'ArrowRight' || event.key === 'd') {
         if (keysPressed.left) keysPressed.left = 1;
         keysPressed.right = 2;
-    } else if (event.key === ' ')
+    } else if (event.key === ' ') {
         keysPressed.space = 1;
+        player.quacked = false;
+    }
 });
 
 document.addEventListener('keyup', (event) => {
@@ -472,6 +492,8 @@ canvas.style.display = 'none';
 const startButton = document.getElementById('start-button');
 
 startButton.addEventListener('click', async () => {
+    await loadSounds(audioEngine);
+
     startButton.textContent = 'Loading...';
     startButton.disabled = true;
 
@@ -479,6 +501,7 @@ startButton.addEventListener('click', async () => {
     player.y = 42;
     player.facing = 'left';
     player.location = 'house1';
+    audioEngine.playMusic(music[player.location]);
 
     try {
         await loadAssets();
