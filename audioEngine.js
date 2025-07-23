@@ -1,5 +1,3 @@
-// audioEngine.js
-
 function timeout(func, ms) {
     return new Promise(resolve => setTimeout(() => {
         func();

@@ -266,12 +266,12 @@
                         {
                          "name":"destinationX",
                          "type":"int",
-                         "value":23
+                         "value":22
                         }, 
                         {
                          "name":"destinationY",
                          "type":"int",
-                         "value":8
+                         "value":2
                         }, 
                         {
                          "name":"type",

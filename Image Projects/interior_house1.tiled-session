@@ -5,8 +5,8 @@
     },
     "activeFile": "E:/OneDrive/Programming/Websites/Duck Game/maps/house1.tmj",
     "expandedProjectPaths": [
-        "E:/OneDrive/Programming/Websites/Duck Game/tilesets",
         "E:/OneDrive/Programming/Websites/Duck Game/maps",
+        "E:/OneDrive/Programming/Websites/Duck Game/tilesets",
         "."
     ],
     "file.lastUsedOpenFilter": "All Files (*)",
@@ -37,14 +37,13 @@
         },
         "E:/OneDrive/Programming/Websites/Duck Game/maps/outdoors1.tmj": {
             "expandedObjectLayers": [
-                3,
                 4
             ],
-            "scale": 11,
+            "scale": 5.5,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 147.72727272727272,
-                "y": 11.90909090909091
+                "x": 101.63636363636363,
+                "y": 24.909090909090914
             }
         },
         "E:/OneDrive/Programming/Websites/Duck Game/tilesets/Collision.tsx": {

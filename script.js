@@ -43,7 +43,7 @@ const game = {
     collisionLayer: null,
     interactablesLayer: null,
     sortedForegroundObjects: [],
-    topLayerObjects: [],
+    topLayer: null // imageLayer or objects layer
 }
 */
 
@@ -105,7 +105,7 @@ async function loadAssets() {
             collisionLayer: null,
             interactablesLayer: null,
             sortedForegroundObjects: [],
-            topLayerObjects: [],
+            topLayer: null
         };
     });
 
@@ -122,16 +122,24 @@ async function loadAssets() {
             if (layer.name === "Collision") map.collisionLayer = layer;
             if (layer.name === "Interactables") map.interactablesLayer = layer;
             if (layer.type === "imagelayer" && layer.name === "Background") map.backgroundLayer = layer;
-            if (layer.name === "Top") map.topLayerObjects = layer.objects;
+            if (layer.name === "Top") map.topLayer = layer;
         });
 
         // Queue background image for loading
         if (map.backgroundLayer) {
             const bgPath = 'backgrounds/' + map.backgroundLayer.image;
             const bgPromise = loadImage(bgPath).then(img => {
-                map.backgroundLayer.image = img;
+                map.backgroundLayer.image = img;  // Replace path string with the loaded image object
             });
             allAssetLoadPromises.push(bgPromise);
+        }
+
+        if (map.topLayer && map.topLayer.type === "imagelayer") {
+            const topLayerPath = 'backgrounds/' + map.topLayer.image; 
+            const topLayerPromise = loadImage(topLayerPath).then(img => {
+                map.topLayer.image = img;
+            });
+            allAssetLoadPromises.push(topLayerPromise);
         }
 
         // Fetch and parse all tilesets for this map
@@ -437,13 +445,19 @@ function drawSceneAndEntities() {
         ctx.drawImage(player.image, Math.round(player.x - camera.x), Math.round(player.y - camera.y), player.width, player.height);
     }
 
-    for (const obj of currentMap.topLayerObjects) {
-        const tileImage = game.tileImages[obj.gid];
-        if (tileImage) {
-            const width = tileImage.width || obj.width;
-            const height = tileImage.height || obj.height;
-            const drawY = obj.y - height;
-            ctx.drawImage(tileImage, obj.x - camera.x, drawY - camera.y, width, height);
+    if (currentMap.topLayer) {
+        if (currentMap.topLayer.type === 'imagelayer' && currentMap.topLayer.image) {
+            ctx.drawImage(currentMap.topLayer.image, -camera.x, -camera.y);
+        } else if (currentMap.topLayer.type === 'objectgroup') {
+            for (const obj of currentMap.topLayer.objects) {
+                const tileImage = game.tileImages[obj.gid];
+                if (tileImage) {
+                    const width = tileImage.width || obj.width;
+                    const height = tileImage.height || obj.height;
+                    const drawY = obj.y - height; // Tiled object origin is bottom-left
+                    ctx.drawImage(tileImage, obj.x - camera.x, drawY - camera.y, width, height);
+                }
+            }
         }
     }
 }
@@ -512,4 +526,4 @@ startButton.addEventListener('click', async () => {
         console.error("Failed to load game assets:", error);
         startButton.textContent = 'Error! Check console.';
     }
-});
+}, { once: true });

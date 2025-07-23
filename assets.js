@@ -1,5 +1,3 @@
-// assets.js
-
 const music = {
     'house1': 'https://cdn.pixabay.com/download/audio/2021/11/23/audio_64b2dd1bce.mp3?filename=just-relax-11157.mp3',
     'outdoors1': 'https://cdn.pixabay.com/download/audio/2024/06/20/audio_c4397b8dad.mp3?filename=peaceful-piano-background-music-218762.mp3'
@@ -49,9 +47,4 @@ let audioEngine;
 
 document.addEventListener('DOMContentLoaded', () => {
     audioEngine = new AudioEngine();
-
-    document.addEventListener('click', async () => {
-        // Load sounds AFTER the first user interaction
-        
-    });
 });
